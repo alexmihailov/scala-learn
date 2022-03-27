@@ -1,11 +1,20 @@
 package com.witcher
 package monopoly
 
-class Chip(val name: String, private var account: Long) {
+case class Chip(name: String, private var account: Long) {
+
+  private var arrested: Boolean = false
 
   def addSalary(value: Long): Unit = account += value
 
   def getAccount: Long = account
+
+  def arrest(): Unit = if (arrested) {
+    throw new IllegalStateException()
+  } else {
+    arrested = true
+  }
+  def isArrested: Boolean = arrested
 }
 
 object Chip {

@@ -74,4 +74,15 @@ class StartGameTest extends AbstractMonopolyTest {
     }
     testKit.finish()
   }
+
+  "not" should "receive information about the prisoner of a player who does not play or does not exist" in {
+    testKit.start(Array(BEAR, BALALAIKA))
+    assertThrows[RuntimeException] {
+      testKit.isArrested(COSMONAUT)
+    }
+    assertThrows[RuntimeException] {
+      testKit.isArrested(UNKNOWN)
+    }
+    testKit.finish()
+  }
 }

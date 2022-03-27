@@ -18,4 +18,7 @@ abstract class AbstractMonopolyTest extends AnyFlatSpec {
 
 
   protected val testKit: Monopoly = MonopolyGame
+
+  protected def skip(): Unit = {
+  }
 }

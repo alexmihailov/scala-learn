@@ -6,6 +6,7 @@ object MonopolyGame extends Monopoly {
 
   private val START_ACCOUNT = 1_500_000_000L
   private val SALARY = 200_000_000L
+  private val PRISON_INDEX = 10
 
   private var cells: Array[Cell] = Array.empty
   private var chips: Array[Chip] = Array.empty
@@ -19,7 +20,16 @@ object MonopolyGame extends Monopoly {
       current = (current + 1) % chips.length
       chip
     }
+    def rollback(): Unit = {
+      if (current == 0) {
+        current = chips.length - 1
+      } else {
+        current -= 1
+      }
+    }
   }
+
+  private var duplicateHolder: Option[(Chip, Int)] = None
 
   private def checkStartGame(enabled: Boolean = true): Unit = if (this.enabled != enabled)
     throw new IllegalStateException()
@@ -36,7 +46,7 @@ object MonopolyGame extends Monopoly {
       throw new IllegalArgumentException()
     }
     this.chips = chips.map { name => Chip.chipOf(name, START_ACCOUNT) }
-    this.cells = Array.fill(39) { FreeCell() }
+    this.cells = Array.fill(40) { FreeCell() }
     this.cells(0).addChips(this.chips)
     this.enabled = true
   }
@@ -64,6 +74,24 @@ object MonopolyGame extends Monopoly {
 
     def checkDice(dice: Int): Unit = if (dice < 1 || dice > 6) throw new IllegalArgumentException
     def checkSalary(index: Int, chip: Chip): Unit = if (index > cells.length - 1) chip.addSalary(SALARY)
+    def safeIndex(index: Int) = index % cells.length
+    def checkDuplicate(): Boolean = first == second
+    def checkGoToPrisonInDuplicate(chip: Chip): Boolean = duplicateHolder match {
+      case Some(tuple) =>
+        if (tuple._1 == chip) {
+          if (tuple._2 >= 2) {
+            duplicateHolder = None
+            return true
+          }
+          else {
+            duplicateHolder = Some(chip, tuple._2 + 1)
+            return false
+          }
+        } else duplicateHolder = Some(chip, 1)
+        false
+      case None => duplicateHolder = Some(chip, 1); false
+      case _ => throw new IllegalStateException
+    }
 
     checkDice(first)
     checkDice(second)
@@ -71,13 +99,25 @@ object MonopolyGame extends Monopoly {
     val chip = ChipsMove.nextChip()
     val oldIndex = whereIs(chip.name)
 
+    if (checkDuplicate()) {
+      if (checkGoToPrisonInDuplicate(chip)) {
+        chip.arrest()
+        cells(PRISON_INDEX).addChip(chip)
+        cells(oldIndex).removeChip(chip)
+      } else {
+        // Если не выпал 3-ий дубль, то следующий опять за текущим игроком.
+        ChipsMove.rollback()
+      }
+      return
+    }
+
     var nextIndex = oldIndex + first + second
     checkSalary(nextIndex, chip)
-    nextIndex = nextIndex % cells.length
+    nextIndex = safeIndex(nextIndex)
     if (!cells(nextIndex).addChip(chip)) {
       nextIndex += 1
       checkSalary(nextIndex, chip)
-      nextIndex = nextIndex % cells.length
+      nextIndex = safeIndex(nextIndex)
       if (!cells(nextIndex).addChip(chip)) throw new IllegalStateException
     }
     cells(oldIndex).removeChip(chip)
@@ -151,7 +191,11 @@ object MonopolyGame extends Monopoly {
    * @param chip Название фишки.
    * @return true — игрок арестован.
    */
-  override def isArrested(chip: Chip): Boolean = ???
+  override def isArrested(chip: String): Boolean = {
+    checkStartGame()
+
+    chips.find(p => p.name.equals(chip)).get.isArrested
+  }
 
   /**
    * Выкупиться из тюрьмы.

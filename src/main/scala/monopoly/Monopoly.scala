@@ -82,7 +82,7 @@ trait Monopoly {
    * @param chip Название фишки.
    * @return true — игрок арестован.
    */
-  def isArrested(chip: Chip): Boolean
+  def isArrested(chip: String): Boolean
 
   /**
    * Выкупиться из тюрьмы.
